@@ -2,53 +2,40 @@ const cvs = document.getElementById("canvas");
 const ctx = cvs.getContext("2d");
 
 const boxUnit = 32;
-
-//load images
-let foodImg = new Image();
-foodImg.src = "img/food.png";
-
-let groundImg = new Image();
-groundImg.src = "img/ground.png";
-
-// load audio files
-
-let dead = new Audio();
-let eat = new Audio();
-let up = new Audio();
-let right = new Audio();
-let left = new Audio();
-let down = new Audio();
-
-dead.src = "audio/dead.mp3";
-eat.src = "audio/eat.mp3";
-up.src = "audio/up.mp3";
-right.src = "audio/right.mp3";
-left.src = "audio/left.mp3";
-down.src = "audio/down.mp3";
-
+let gameStatus = "pause";
 // create the snake
 let snake = [];
 snake[0] = {
   x: 9 * boxUnit,
   y: 10 * boxUnit
 };
-
 // create the food
-let food = {
-  x: Math.floor(Math.random() * 17 + 1) * boxUnit,
-  y: Math.floor(Math.random() * 15 + 3) * boxUnit
-};
+let food = genareteFood(boxUnit);
+function genareteFood(boxUnit) {
+  let randomX = Math.floor(Math.random() * 17 + 1);
+  let randomY = Math.floor(Math.random() * 15 + 3);
 
+  // so that food don't conflict with snake location
+  if (randomX == 9 && randomY == 10) return genareteFood(boxUnit);
+
+  return {
+    x: randomX * boxUnit,
+    y: randomY * boxUnit
+  };
+}
 // create the score var
-
 let score = 0;
 
 //control the snake
-
 let d;
 document.addEventListener("keydown", direction);
 function direction(event) {
   let key = event.keyCode;
+
+  if ((key == 37) | (key == 38) | (key == 39) | (key == 40)) {
+    gameStatus = "play";
+  }
+
   if (key == 37 && d != "RIGHT") {
     left.play();
     d = "LEFT";
@@ -64,26 +51,38 @@ function direction(event) {
   }
 }
 
+// mouse click
+cvs.addEventListener("mousedown", mouseClick, false);
+
+// play pause button
+function genaratePlayPause() {
+  if (d == undefined) {
+    playImg.src = "img/play.png";
+  } else {
+    playImg.src = "img/pause.png";
+  }
+  ctx.drawImage(playImg, 3 * boxUnit, 0.6 * boxUnit, boxUnit, boxUnit);
+}
+
 // cheack collision function
-function collision(head, array) {
-  for (let i = 0; i < array.length; i++) {
-    if (head.x == array[i].x && head.y == array[i].y) {
+function collision(newHead, snake) {
+  for (let i = 0; i < snake.length; i++) {
+    if (newHead.x == snake[i].x && newHead.y == snake[i].y) {
       return true;
     }
   }
   return false;
 }
+
 function draw() {
+  //drawings
   ctx.drawImage(groundImg, 0, 0);
   ctx.drawImage(foodImg, food.x, food.y);
 
-  for (let i = 0; i < snake.length; i++) {
-    ctx.fillStyle = i == 0 ? "green" : "white";
-    ctx.fillRect(snake[i].x, snake[i].y, boxUnit, boxUnit);
+  //draw play button
+  genaratePlayPause();
 
-    ctx.strokeStyle = "red";
-    ctx.strokeRect(snake[i].x, snake[i].y, boxUnit, boxUnit);
-  }
+  drawSnake(snake, ctx, boxUnit);
 
   // old head position
   let snakeX = snake[0].x;
@@ -99,10 +98,7 @@ function draw() {
   if (snakeX == food.x && snakeY == food.y) {
     eat.play();
     score++;
-    food = {
-      x: Math.floor(Math.random() * 17 + 1) * boxUnit,
-      y: Math.floor(Math.random() * 15 + 3) * boxUnit
-    };
+    food = genareteFood(boxUnit);
     // we don't remove the tail
   } else {
     // remove the tail
@@ -110,14 +106,12 @@ function draw() {
   }
 
   // add new Head
-
   let newHead = {
     x: snakeX,
     y: snakeY
   };
 
   // game over
-
   if (
     snakeX < boxUnit ||
     snakeX > 17 * boxUnit ||
@@ -125,15 +119,16 @@ function draw() {
     snakeY > 17 * boxUnit ||
     collision(newHead, snake)
   ) {
+    gameStatus = "pause";
+    d = undefined;
+    genaratePlayPause();
+
     dead.play();
     clearInterval(game);
   }
-
   snake.unshift(newHead);
 
-  ctx.fillStyle = "white";
-  ctx.font = "45px Changa one";
-  ctx.fillText(score, 2 * boxUnit, 1.6 * boxUnit);
+  scoreShow(ctx, score);
 }
 //window.onload = draw();
 let game = setInterval(draw, 300);
